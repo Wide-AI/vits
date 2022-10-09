@@ -233,11 +233,12 @@ class PosteriorEncoder(nn.Module):
 
   def forward(self, x, x_lengths, g=None):
     x_mask = torch.unsqueeze(commons.sequence_mask(x_lengths, x.size(2)), 1).to(x.dtype)
+    # where x.size(2) is the hidden dimension of the embeddings
     x = self.pre(x) * x_mask
     x = self.enc(x, x_mask, g=g)
     stats = self.proj(x) * x_mask
     m, logs = torch.split(stats, self.out_channels, dim=1)
-    z = (m + torch.randn_like(m) * torch.exp(logs)) * x_mask
+    z = (m + torch.randn_like(m) * torch.exp(logs)) * x_mask  # sampling step
     return z, m, logs, x_mask
 
 
@@ -457,7 +458,10 @@ class SynthesizerTrn(nn.Module):
       self.emb_g = nn.Embedding(n_speakers, gin_channels)
 
   def forward(self, x, x_lengths, y, y_lengths, sid=None):
-
+    """
+    x is the phonemes
+    y is the linear spectrogram
+    """
     x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
     if self.n_speakers > 0:
       g = self.emb_g(sid).unsqueeze(-1) # [b, h, 1]
